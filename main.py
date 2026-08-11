@@ -1,38 +1,16 @@
-import os
 import sqlite3
 import datetime
-from threading import Thread
-from flask import Flask
 import telebot
 from telebot import types
 
-# ================= 1. SOZLAMALAR =================
-# O'zingizning aniq tokeningiz va Telegram ID'ingizni yozing
-TOKEN = '8886895047:AAHXuiBlGpdqZA9GO-5WOsM5xOV52R-rI4M'  # BotFather'dan olingan token
-ADMIN_ID = 7704099453        # O'zingizning Telegram ID'ingiz
-
-# Majburiy obuna kanallari (Hozircha bo'sh, xatolik bermasligi uchun)
-CHANNELS = [@kinogap] 
+# ================= SOZLAMALAR =================
+TOKEN = '8886895047:AAHXuiBlGpdqZA9GO-5WOsM5xOV52R-rI4M'  # BotFather tokeningiz
+ADMIN_ID = 7704099453        # Sizning Telegram ID'ingiz
 
 bot = telebot.TeleBot(TOKEN)
 DB_NAME = "kinogap.db"
 
-# ================= 2. FAKE WEB-SERVER (Render port xatosisiz ishlashi uchun) =================
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "KinoGap Bot faol ishlamoqda!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-def keep_alive():
-    t = Thread(target=run_flask)
-    t.start()
-
-# ================= 3. MA'LUMOTLAR BAZASI =================
+# ================= MA'LUMOTLAR BAZASI =================
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -66,7 +44,7 @@ def add_user(user_id, username):
         conn.commit()
     conn.close()
 
-# ================= 4. BUYRUQLAR VA MENU =================
+# ================= BUYRUQLAR VA MENU =================
 @bot.message_handler(commands=['start'])
 def start_command(message):
     add_user(message.from_user.id, message.from_user.username)
@@ -92,9 +70,8 @@ def get_stats(message):
         parse_mode="Markdown"
     )
 
-# ================= 5. ISHGA TUSHIRISH =================
+# ================= ISHGA TUSHIRISH =================
 if __name__ == "__main__":
-    keep_alive()
     print("KinoGap Bot ishga tushdi...")
     bot.infinity_polling(skip_pending_subscriptions=True)
     
