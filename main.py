@@ -1,16 +1,34 @@
+import os
 import sqlite3
 import datetime
+from threading import Thread
+from flask import Flask
 import telebot
 from telebot import types
 
-# ================= SOZLAMALAR =================
-TOKEN = '8886895047:AAHXuiBlGpdqZA9GO-5WOsM5xOV52R-rI4M'  # BotFather tokeningiz
+# ================= 1. SOZLAMALAR =================
+TOKEN = '8886895047:AAFijeyfYPvn59YAcRvNKozxSTfIttACq2E'  # BotFather'dan olingan to'liq tokeningiz
 ADMIN_ID = 7704099453        # Sizning Telegram ID'ingiz
 
 bot = telebot.TeleBot(TOKEN)
 DB_NAME = "kinogap.db"
 
-# ================= MA'LUMOTLAR BAZASI =================
+# ================= 2. BEPUL FLASK SERVER (Render xatosi bermasligi uchun) =================
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "KinoGap Bot faol ishlamoqda!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.start()
+
+# ================= 3. MA'LUMOTLAR BAZASI =================
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -44,7 +62,7 @@ def add_user(user_id, username):
         conn.commit()
     conn.close()
 
-# ================= BUYRUQLAR VA MENU =================
+# ================= 4. BUYRUQLAR VA MENU =================
 @bot.message_handler(commands=['start'])
 def start_command(message):
     add_user(message.from_user.id, message.from_user.username)
@@ -70,8 +88,9 @@ def get_stats(message):
         parse_mode="Markdown"
     )
 
-# ================= ISHGA TUSHIRISH =================
+# ================= 5. ISHGA TUSHIRISH =================
 if __name__ == "__main__":
+    keep_alive()
     print("KinoGap Bot ishga tushdi...")
     bot.infinity_polling(skip_pending_subscriptions=True)
     
