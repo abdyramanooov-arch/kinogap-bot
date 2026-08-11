@@ -9,6 +9,7 @@ from telebot import types
 # ================= 1. SOZLAMALAR =================
 TOKEN = '8886895047:AAFijeyfYPvn59YAcRvNKozxSTfIttACq2E'  # BotFather'dan olingan tokeningiz
 ADMIN_ID = 7704099453        # Sizning Telegram ID'ingiz
+MAIN_CHANNEL = "@KinoGap"  # Asosiy KinoGap kanalingiz username'i yoki ID'si (masalan: @KinoGap)
 
 bot = telebot.TeleBot(TOKEN)
 DB_NAME = "kinogap.db"
@@ -49,7 +50,6 @@ def init_db():
             caption TEXT
         )
     ''')
-    # Kanallar jadvali
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS channels (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +92,6 @@ def check_sub(user_id):
             if member.status in ['left', 'kicked']:
                 unsubscribed.append((ch_name, ch_url))
         except Exception:
-            # Bot kanalda admin bo'lmasa yoki xato bo'lsa
             pass
     return unsubscribed
 
@@ -280,15 +279,16 @@ def handle_admin_inputs(message):
         admin_states[message.from_user.id] = "waiting_movie_file"
         bot.send_message(message.chat.id, f"✅ Kod: {message.text}. Endi **videoni** yuboring:")
 
-    # KINO QO'SHISH - VIDEO
+    # KINO QO'SHISH - VIDEO VA KANALGA BILDIRISHNOMA YUBORISH
     elif state == "waiting_movie_file":
         if message.content_type != 'video':
             bot.send_message(message.chat.id, "⚠️ Video yuboring!")
             return
         movie_code = admin_states.get(f"{message.from_user.id}_code")
         file_id = message.video.file_id
-        caption = message.caption if message.caption else f"🎬 Kino kodi: {movie_code}"
+        caption = message.caption if message.caption else f"🎬 Yangi film qo'shildi!"
         
+        # 1. Bazaga saqlash
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("INSERT OR REPLACE INTO movies (movie_code, file_id, caption) VALUES (?, ?, ?)",
@@ -298,7 +298,26 @@ def handle_admin_inputs(message):
         
         del admin_states[message.from_user.id]
         del admin_states[f"{message.from_user.id}_code"]
-        bot.send_message(message.chat.id, f"🎉 Kino saqlandi! Kodi: `{movie_code}`", parse_mode="Markdown")
+        
+        # 2. Asosiy KinoGap kanaliga bildirishnoma yuborish
+        try:
+            bot_username = bot.get_me().username
+            channel_text = (
+                f"🎬 **YANGI FILM QO'SHILDI!**\n\n"
+                f"📝 **Nomi/Izoh:** {caption}\n"
+                f"🔑 **Kino kodi:** `{movie_code}`\n\n"
+                f"🍿 Filmni tomosha qilish uchun botga kiring:\n"
+                f"👉 @{bot_username}"
+            )
+            
+            # Botga o'tuvchi inline tugma
+            channel_markup = types.InlineKeyboardMarkup()
+            channel_markup.add(types.InlineKeyboardButton("🎬 Filmni tomosha qilish", url=f"https://t.me/{bot_username}?start={movie_code}"))
+            
+            bot.send_message(MAIN_CHANNEL, channel_text, reply_markup=channel_markup, parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"🎉 Kino saqlandi hamda **{MAIN_CHANNEL}** kanaliga e'lon joylandi! Kodi: `{movie_code}`", parse_mode="Markdown")
+        except Exception as e:
+            bot.send_message(message.chat.id, f"🎉 Kino saqlandi! Lekin kanalga yuborishda xato: {e}\n(Bot kanal admini ekanini va MAIN_CHANNEL to'g'riligini tekshiring)", parse_mode="Markdown")
 
     # KINO O'CHIRISH
     elif state == "waiting_del_code":
@@ -366,4 +385,4 @@ if __name__ == "__main__":
     keep_alive()
     print("KinoGap Bot ishga tushdi...")
     bot.infinity_polling(skip_pending=True)
-        
+    
