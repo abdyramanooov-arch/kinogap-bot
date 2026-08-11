@@ -92,5 +92,6 @@ def get_stats(message):
 if __name__ == "__main__":
     keep_alive()
     print("KinoGap Bot ishga tushdi...")
-    bot.infinity_polling(skip_pending_subscriptions=True)
+    bot.infinity_polling(skip_pending=True)
+    
     
